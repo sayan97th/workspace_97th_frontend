@@ -4,7 +4,7 @@ import JoinWorkspaceForm from "@/components/auth/JoinWorkspaceForm";
 
 export const metadata: Metadata = {
   title: "Join Workspace",
-  description: "Join a Workspace 97th workspace through a shared invite link",
+  description: "Join a Blueprint workspace through a shared invite link",
 };
 
 type Props = {

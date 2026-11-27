@@ -4,7 +4,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Sign In",
-  description: "Sign In page for Workspace 97th Dashboard",
+  description: "Sign in to Blueprint",
 };
 
 type Props = {

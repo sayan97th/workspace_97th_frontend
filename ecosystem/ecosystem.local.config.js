@@ -1,5 +1,5 @@
 // =============================================================================
-// PM2 Ecosystem — Workspace 97th Frontend (LOCAL / Arch Linux)
+// PM2 Ecosystem — Blueprint Frontend (LOCAL / Arch Linux)
 // App path: /mnt/linux-storage/projects/97thfloor/monday_projects/workspace_97th_frontend
 //
 // Start:   yarn run pm2:local

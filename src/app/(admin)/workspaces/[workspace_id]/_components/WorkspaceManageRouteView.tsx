@@ -24,7 +24,7 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
 export const WorkspaceManageRouteView: React.FC = () => {
   const { node, has_error, active_tab, onTabChange } = useWorkspaceManageRoute();
 
-  // "Collaborators | Marketing | Workspace 97th": the active tab, then the workspace it manages.
+  // "Collaborators | Marketing | Blueprint": the active tab, then the workspace it manages.
   useDocumentTitle(
     node
       ? buildPageTitle(WORKSPACE_MANAGE_TAB_LABELS[active_tab], node.workspace.name)

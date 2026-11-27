@@ -1,4 +1,6 @@
 import GridShape from "@/components/common/GridShape";
+import BlueprintMark from "@/components/common/BlueprintMark";
+import { PRODUCT_NAME } from "@/lib/product";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
@@ -39,9 +41,10 @@ export default function NotFound() {
         </Link>
       </div>
       {/* <!-- Footer --> */}
-      <p className="absolute text-sm text-center text-gray-500 -translate-x-1/2 bottom-6 left-1/2 dark:text-gray-400">
-        &copy; {new Date().getFullYear()} - Workspace 97th
-      </p>
+      <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2.5 text-sm text-gray-500 dark:text-gray-400">
+        <BlueprintMark size={18} />
+        <span>&copy; {new Date().getFullYear()} {PRODUCT_NAME}</span>
+      </div>
     </div>
   );
 }

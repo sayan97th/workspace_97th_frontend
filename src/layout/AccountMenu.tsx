@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import OrganizationLogo from "@/components/common/OrganizationLogo";
+import { BlueprintWordmark } from "@/components/common/BlueprintMark";
 import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import { boardTreeFontClassName } from "@/components/board/board-tree-font";
 import { CheckIcon } from "@/icons/workspace-icons";
@@ -525,6 +526,10 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
             </span>
             <span className="account-menu__label">{is_signing_out ? "Logging out..." : "Log out"}</span>
           </button>
+        </div>
+
+        <div className="account-menu__product">
+          <BlueprintWordmark size={16} name_class_name="account-menu__product-name" />
         </div>
       </div>
 

@@ -338,3 +338,16 @@ html.dark .account-menu-flyout {
   margin-left: auto;
   color: var(--account-menu-accent);
 }
+
+/* Product line under Log out: the Blueprint mark and name, quiet so it never competes with the menu. */
+.account-menu__product {
+  display: flex;
+  justify-content: center;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--account-menu-divider);
+  opacity: 0.85;
+}
+
+.account-menu__product-name {
+  color: var(--account-menu-text-secondary);
+}

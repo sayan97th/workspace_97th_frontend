@@ -115,9 +115,9 @@ const formatIcsDateTime = (date: Date): string => format(date, "yyyyMMdd'T'HHmms
 /** Builds an iCalendar file of the given events, all day events as `VALUE=DATE`, timed ones in the viewer's local time. */
 const buildIcsFile = (events: CalendarEventItem[], calendar_name: string): string => {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//97th Floor//Workspace Calendar//EN", `X-WR-CALNAME:${escapeIcsText(calendar_name)}`];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//97th Floor//Blueprint//EN", `X-WR-CALNAME:${escapeIcsText(calendar_name)}`];
   for (const event of events) {
-    lines.push("BEGIN:VEVENT", `UID:${event.key}@workspace-97th`, `DTSTAMP:${stamp}`, `SUMMARY:${escapeIcsText(event.title)}`);
+    lines.push("BEGIN:VEVENT", `UID:${event.key}@blueprint`, `DTSTAMP:${stamp}`, `SUMMARY:${escapeIcsText(event.title)}`);
     if (event.allDay) {
       lines.push(`DTSTART;VALUE=DATE:${formatIcsDate(event.start)}`, `DTEND;VALUE=DATE:${formatIcsDate(event.end)}`);
     } else {

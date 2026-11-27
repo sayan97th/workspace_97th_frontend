@@ -227,3 +227,48 @@
     animation: none;
   }
 }
+
+/* ── Brand panel drafting grid ───────────────────────────────────────────── */
+
+/* Blueprint paper: a fine 24px grid under a stronger 96px one, fading out toward the
+   edges so the logo and copy stay the focus. */
+.auth-shell__blueprint-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size:
+    96px 96px,
+    96px 96px,
+    24px 24px,
+    24px 24px;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 45%, #000 25%, transparent 90%);
+  pointer-events: none;
+}
+
+/* Corner registration marks, the way a printed blueprint is framed. */
+.auth-shell__blueprint-grid::before,
+.auth-shell__blueprint-grid::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.22);
+  border-style: solid;
+}
+
+.auth-shell__blueprint-grid::before {
+  top: 28px;
+  left: 28px;
+  border-width: 1px 0 0 1px;
+}
+
+.auth-shell__blueprint-grid::after {
+  right: 28px;
+  bottom: 28px;
+  border-width: 0 1px 1px 0;
+}

@@ -550,7 +550,8 @@ export type BoardAutomationPreviewResult = {
 
 /** The JSON file "Export" writes and "Import" reads. */
 export type BoardAutomationExportFile = {
-  format: "workspace97.automations";
+  /** "workspace97.automations" is the format written before the rename to Blueprint, still importable. */
+  format: "blueprint.automations" | "workspace97.automations";
   version: number;
   exported_at: string;
   source: { board_id: number; board_name: string; view_id: number };

@@ -1,5 +1,7 @@
+import { PRODUCT_NAME } from "./product";
+
 /** Product name shown at the end of every browser tab title. */
-export const APP_NAME = "Workspace 97th";
+export const APP_NAME = PRODUCT_NAME;
 
 const TITLE_SEPARATOR = " | ";
 const MAX_TITLE_PART_LENGTH = 60;
@@ -13,7 +15,7 @@ const normalizeTitlePart = (part: string): string => {
 /**
  * Builds a browser tab title from the most specific part to the least
  * specific one, ending with the product name, e.g.
- * `buildPageTitle("Launch plan", "Client Hub")` -> "Launch plan | Client Hub | Workspace 97th".
+ * `buildPageTitle("Launch plan", "Client Hub")` -> "Launch plan | Client Hub | Blueprint".
  * Empty parts are skipped, so a part that is still loading never leaves a
  * dangling separator. Static routes should not call this: they export a plain
  * `metadata.title` and the root layout's `title.template` adds the product name.

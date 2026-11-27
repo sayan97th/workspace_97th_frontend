@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vhost deployment script — Workspace 97th Frontend (Production)
+# Vhost deployment script — Blueprint Frontend (Production)
 # Domain  : workspace97th.97dev.com
 #
 # Usage:

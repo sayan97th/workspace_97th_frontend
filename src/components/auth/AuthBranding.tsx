@@ -4,6 +4,8 @@ import Link from "next/link";
 import { GanttChart, Layers, Users } from "lucide-react";
 import { brandingService } from "@/services/branding.service";
 import { applyBrandColor, applyFavicon } from "@/lib/brand-theme";
+import { PRODUCT_NAME } from "@/lib/product";
+import { BlueprintWordmark } from "@/components/common/BlueprintMark";
 import type { SignInBrandingDto } from "@/types/branding";
 
 const DEFAULT_COMPANY_NAME = "97th Floor";
@@ -90,7 +92,7 @@ export const AuthMobileBrandMark: React.FC = () => {
       <Link href="/" className="inline-flex items-center gap-2.5">
         <LogoTile branding={branding} size="small" />
         <span className="font-outfit text-sm font-semibold text-gray-800 dark:text-white/90">
-          {branding?.company_name ?? "Workspace 97th"}
+          {branding?.company_name ?? PRODUCT_NAME}
         </span>
       </Link>
     </div>
@@ -104,7 +106,7 @@ export const AuthBrandPanel: React.FC = () => {
 
   return (
     <aside className="auth-shell__brand-panel relative h-full items-center justify-center overflow-hidden bg-[linear-gradient(160deg,var(--color-gray-700)_0%,var(--color-gray-600)_55%,var(--color-gray-500)_100%)]">
-      <div className="absolute inset-0 bg-[repeating-linear-gradient(108deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_22px)]" />
+      <div className="auth-shell__blueprint-grid" aria-hidden="true" />
       <div className="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-brand-500/25 blur-[110px]" />
       <div className="absolute -top-20 -left-16 h-72 w-72 rounded-full bg-sunset-500/15 blur-[110px]" />
 
@@ -113,7 +115,7 @@ export const AuthBrandPanel: React.FC = () => {
           <LogoTile branding={branding} size="large" />
         </Link>
         <span className="mb-4 font-mono-accent text-xs tracking-[0.14em] text-white/45 uppercase">
-          [ {branding ? company_name : "workspace 97th"} ]
+          [ {branding ? company_name : PRODUCT_NAME.toLowerCase()} ]
         </span>
         <p className="text-xl leading-relaxed font-light text-white/90">{branding?.login_headline || DEFAULT_HEADLINE}</p>
         {branding?.login_message ? (
@@ -135,9 +137,13 @@ export const AuthBrandPanel: React.FC = () => {
         </div>
       </div>
 
-      <p className="absolute bottom-6 font-mono-accent text-[11px] tracking-[0.1em] text-white/30">
-        © {new Date().getFullYear()} {company_name}
-      </p>
+      <div className="absolute bottom-6 flex items-center gap-3 text-white/35">
+        <BlueprintWordmark size={18} name_class_name="text-white/75" />
+        <span className="h-3 w-px bg-white/15" aria-hidden="true" />
+        <span className="font-mono-accent text-[11px] tracking-[0.1em]">
+          © {new Date().getFullYear()} {company_name}
+        </span>
+      </div>
     </aside>
   );
 };

@@ -1,8 +1,8 @@
-# Workspace 97th Frontend — PM2 Deployment Guide
+# Blueprint Frontend — PM2 Deployment Guide
 
 This project uses [PM2](https://pm2.keymetrics.io/) as the process manager for running the Next.js application across multiple environments.
 
-It is the frontend companion of the **Workspace 97th API** (Laravel + JWT). Each frontend environment maps to an API environment:
+It is the frontend companion of the **Blueprint API** (Laravel + JWT). Each frontend environment maps to an API environment:
 
 | Environment | Frontend domain | API domain |
 |---|---|---|

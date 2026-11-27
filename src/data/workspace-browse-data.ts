@@ -9,6 +9,7 @@
 import type { WorkspaceSummary } from "./workspace-switcher-data";
 import { default_workspace_color } from "./workspace-switcher-data";
 import type { WorkspacePrivacy } from "./workspace-create-data";
+import { PRODUCT_NAME } from "@/lib/product";
 
 /** Membership buckets a workspace can belong to (drives the left-nav tabs). */
 export type WorkspaceMembership = "recent" | "owner" | "member" | "collaborator";
@@ -34,7 +35,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     mono: "97",
     color: default_workspace_color,
     is_home: true,
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     role: "Member",
     memberships: ["recent", "member"],
   },
@@ -43,7 +44,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "BASE",
     mono: "B",
     color: "#2f6fed",
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     memberships: [],
   },
   {
@@ -59,7 +60,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Decision Priority Matrix",
     mono: "D",
     color: "#6b7280",
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     memberships: [],
   },
   {
@@ -67,7 +68,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Highrise",
     mono: "H",
     color: "#26312f",
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     memberships: [],
   },
   {
@@ -75,7 +76,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Partnerships",
     mono: "P",
     color: "#2f9e68",
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     memberships: [],
   },
   {
@@ -83,7 +84,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Personal",
     mono: "P",
     color: "#e8a317",
-    product: "Workspace 97th",
+    product: PRODUCT_NAME,
     memberships: [],
   },
 ];

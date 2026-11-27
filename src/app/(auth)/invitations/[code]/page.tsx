@@ -4,7 +4,7 @@ import AcceptInvitationForm from "@/components/auth/AcceptInvitationForm";
 
 export const metadata: Metadata = {
   title: "Accept Invitation",
-  description: "Accept your invitation to join a Workspace 97th workspace",
+  description: "Accept your invitation to join a Blueprint workspace",
 };
 
 type Props = {

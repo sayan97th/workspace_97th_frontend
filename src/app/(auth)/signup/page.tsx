@@ -4,7 +4,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Sign Up",
-  description: "Sign Up page for Workspace 97th Dashboard",
+  description: "Create your Blueprint account",
 };
 
 type Props = {

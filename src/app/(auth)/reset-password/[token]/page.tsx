@@ -4,7 +4,7 @@ import { readSearchParam } from "@/components/auth/AuthPrimitives";
 
 export const metadata: Metadata = {
   title: "Reset Password",
-  description: "Set your new Workspace 97th account password",
+  description: "Set your new Blueprint account password",
 };
 
 type Props = {

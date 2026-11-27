@@ -112,7 +112,7 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ authentic
               type="text"
               value={authentication.approved_domains}
               onChange={(event) => authentication.setApprovedDomains(event.target.value)}
-              placeholder="e.g. workspace97.app, partner.com"
+              placeholder="e.g. 97thfloor.com, partner.com"
               className={textAreaClass}
             />
           </div>

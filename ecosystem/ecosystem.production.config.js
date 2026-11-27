@@ -1,5 +1,5 @@
 // =============================================================================
-// PM2 Ecosystem - Workspace 97th Frontend (PRODUCTION)
+// PM2 Ecosystem - Blueprint Frontend (PRODUCTION)
 // Domain  : workspace97th.97dev.com   (API: api.workspace97th.97dev.com)
 // Runs the Next.js standalone server (server.js) built on a local machine by
 // scripts/deploy/build-package.sh. The server never runs "next build".

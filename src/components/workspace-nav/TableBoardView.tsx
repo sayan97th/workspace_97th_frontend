@@ -3213,7 +3213,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   }, [discussion_update_param]);
 
   // Browser tab title: the open item wins, then the board updates panel, then the active view.
-  // "Launch plan | Client Hub | Workspace 97th", "Client Hub | Main table | Workspace 97th".
+  // "Launch plan | Client Hub | Blueprint", "Client Hub | Main table | Blueprint".
   useDocumentTitle(
     drawer.is_open
       ? buildPageTitle(drawer.open_row_title, node.label)

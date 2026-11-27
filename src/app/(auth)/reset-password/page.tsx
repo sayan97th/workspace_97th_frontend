@@ -3,7 +3,7 @@ import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 
 export const metadata: Metadata = {
   title: "Forgot Password",
-  description: "Reset your Workspace 97th account password",
+  description: "Reset your Blueprint account password",
 };
 
 export default function ResetPasswordPage() {
