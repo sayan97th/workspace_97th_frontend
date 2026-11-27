@@ -32,7 +32,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
       <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
         <div className="h-9" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: ROW_BG }} />
         <div className="h-9" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]), zIndex: 15, background: ROW_BG }} />
-        <div className="h-9 border-r border-boardtree-grid" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: ROW_BG }} />
+        <div className="h-9" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: ROW_BG }} />
 
         {columns.map((col, col_index) => {
           const summary = summaryForColumn(group.items, col, state.status_defs, columns);
@@ -41,9 +41,8 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
             <div
               key={col.id}
               data-column-move={columnMoveKey("main", col.id)}
-              className="flex h-9 min-w-0 flex-col items-center justify-center border-r border-boardtree-grid bg-boardtree-surface px-2"
+              className="flex h-9 min-w-0 flex-col items-center justify-center bg-boardtree-surface px-2"
               style={{
-                borderBottom: "1px solid var(--color-boardtree-grid)",
                 position: is_pinned ? "sticky" : undefined,
                 left: is_pinned ? sticky_offsets[3 + col_index] : undefined,
                 zIndex: is_pinned ? 15 : undefined,

@@ -191,7 +191,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
       <TreeBar variant="gutter" color={group.color} is_active={is_hovered || is_selected} />
 
       <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>
           <button
             type="button"
             role="checkbox"
@@ -213,7 +213,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
 
         {/* The whole name cell is the drag handle, like monday.com, see `item-name-cell.scss`. */}
         <div
-          className="item-name-cell flex items-center gap-0.5 border-r border-boardtree-grid pl-1 pr-1.5"
+          className="item-name-cell flex items-center gap-0.5 pl-1 pr-1.5"
           data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,

@@ -19,10 +19,10 @@ export default function AddItemRow({ min_width, color, onAdd }: AddItemRowProps)
         <button
           type="button"
           onClick={onAdd}
-          className="add-item-row__button flex h-9 items-center gap-1.5 pr-3 pl-10 text-board-cell text-boardtree-text-faint"
+          className="add-item-row__button flex h-9 items-center pr-3 pl-[27px] text-board-cell text-boardtree-text-faint"
           style={{ ...stickyCellStyle(is_sticky_columns, 36), zIndex: 15 }}
         >
-          + Add item
+          Add item...
         </button>
       </div>
     </div>
