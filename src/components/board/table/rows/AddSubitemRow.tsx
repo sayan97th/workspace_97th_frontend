@@ -16,7 +16,7 @@ export default function AddSubitemRow({ min_width, color, tint, onAdd }: AddSubi
       <TreeBar variant="faded" color={color} tint={tint} />
       <TreeHook color={tint} ghost />
       <div className="w-[5px] flex-none rounded-bl-[5px]" style={{ background: tint }} />
-      <div className="grid flex-1 grid-cols-[34px_1fr] rounded-br-[10px] border-r border-b border-boardtree-border bg-boardtree-surface">
+      <div className="grid flex-1 grid-cols-[34px_max-content_1fr] rounded-br-[10px] border-r border-b border-boardtree-border bg-boardtree-surface">
         <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ ...stickyCellStyle(is_sticky_columns, 0), zIndex: 15, background: "var(--color-boardtree-surface)" }}>
           <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface" />
         </div>
@@ -24,10 +24,12 @@ export default function AddSubitemRow({ min_width, color, tint, onAdd }: AddSubi
           type="button"
           onClick={onAdd}
           className="flex h-9 items-center pr-3 pl-5 text-board-cell text-boardtree-text-secondary hover:text-boardtree-accent"
-          style={{ ...stickyCellStyle(is_sticky_columns, 34), zIndex: 15 }}
+          style={{ ...stickyCellStyle(is_sticky_columns, 34), zIndex: 15, background: "var(--color-boardtree-surface)" }}
         >
           + Add subitem
         </button>
+        {/* Filler track: the button only takes its own width, so it has room to stay frozen while the row scrolls. */}
+        <div aria-hidden />
       </div>
     </div>
   );
