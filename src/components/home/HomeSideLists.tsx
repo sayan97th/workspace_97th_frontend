@@ -34,7 +34,7 @@ export const HomeInboxList: React.FC<{ notifications: NotificationDto[] | null; 
   onOpenInbox,
 }) => {
   if (notifications === null) return <ListSkeleton height={48} />;
-  if (notifications.length === 0) return <EmptyNote icon="🎉">You&apos;re all caught up. No unread notifications.</EmptyNote>;
+  if (notifications.length === 0) return <EmptyNote icon="🎉">No unread notifications.</EmptyNote>;
 
   return (
     <>
@@ -85,7 +85,7 @@ export const HomeInboxList: React.FC<{ notifications: NotificationDto[] | null; 
 export const HomeFavoritesList: React.FC<{ favorites: FavoriteItemDto[] | null }> = ({ favorites }) => {
   if (favorites === null) return <ListSkeleton />;
   if (favorites.length === 0) {
-    return <EmptyNote icon="⭐">Star a board to keep it one click away. Use the star on any board card.</EmptyNote>;
+    return <EmptyNote icon="⭐">No starred boards.</EmptyNote>;
   }
 
   return (

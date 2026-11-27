@@ -28,10 +28,10 @@ type HomeMyWorkProps = {
 };
 
 const EMPTY_MESSAGES: Record<HomeWorkTab, { icon: string; text: string }> = {
-  past_dates: { icon: "🎯", text: "Nothing overdue. You're right on schedule." },
-  today: { icon: "☕", text: "Nothing due today. A good moment to plan ahead." },
+  past_dates: { icon: "🎯", text: "Nothing overdue." },
+  today: { icon: "☕", text: "Nothing due today." },
   this_week: { icon: "🌤️", text: "Nothing else due this week." },
-  upcoming: { icon: "🗓️", text: "Nothing planned past this week yet. Items with later due dates show up here." },
+  upcoming: { icon: "🗓️", text: "Nothing planned past this week." },
 };
 
 /** localStorage key of the Upcoming tab's "Due within" pick. */

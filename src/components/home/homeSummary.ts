@@ -74,7 +74,7 @@ export const buildDayRecap = (counts: { overdue: number; today: number; unread: 
   if (counts.overdue > 0) parts.push(plural(counts.overdue, "overdue item"));
   if (counts.today > 0) parts.push(`${plural(counts.today, "item")} due today`);
   if (counts.unread > 0) parts.push(plural(counts.unread, "unread notification"));
-  if (parts.length === 0) return "You're all caught up. Nothing is due today, enjoy the calm.";
+  if (parts.length === 0) return "You're all caught up.";
   return `You have ${joinParts(parts)}.`;
 };
 
