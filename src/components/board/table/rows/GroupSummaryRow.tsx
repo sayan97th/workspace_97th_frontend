@@ -37,12 +37,22 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
         {columns.map((col, col_index) => {
           const summary = summaryForColumn(group.items, col, state.status_defs, columns);
           const is_pinned = col_index < pinned_columns.length;
+          const is_first = col_index === 0;
+          const is_last = col_index === columns.length - 1;
           return (
             <div
               key={col.id}
               data-column-move={columnMoveKey("main", col.id)}
-              className="flex h-9 min-w-0 flex-col items-center justify-center bg-boardtree-surface px-2"
+              className="flex h-9 min-w-0 flex-col items-center justify-center border-r border-boardtree-grid bg-boardtree-surface px-2"
               style={{
+                borderTop: "1px solid var(--color-boardtree-grid)",
+                borderBottom: "1px solid var(--color-boardtree-grid)",
+                // Pulled up 1px so its top line lands on the row line above instead of doubling it.
+                marginTop: -1,
+                // The strip draws its own left edge inside the cell, so the frozen Item cells next to it can't cover it and its corner can round off.
+                borderLeft: is_first ? "1px solid var(--color-boardtree-grid)" : undefined,
+                borderBottomLeftRadius: is_first ? 6 : undefined,
+                borderBottomRightRadius: is_last ? 6 : undefined,
                 position: is_pinned ? "sticky" : undefined,
                 left: is_pinned ? sticky_offsets[3 + col_index] : undefined,
                 zIndex: is_pinned ? 15 : undefined,
